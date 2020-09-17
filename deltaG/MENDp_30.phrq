@@ -1,0 +1,311 @@
+DATABASE ../../database/redox.dat
+
+TITLE Carbon decomposition in MEND
+
+CALCULATE_VALUES
+ fpH
+ -start
+ 10 pH = -la("H+")
+ 20 fpH = 10^(-0.2235*pH*pH + 2.7727*pH - 8.6)
+ 30 SAVE fpH
+ -end
+fsalt
+ -start
+ 10 logs = la("Cl-")+la("Na+")
+ 20 fsalt = 1 / (1.0 + exp(-2.5 * (1.5 - logs)))  #log(umol g-1)
+ 40 SAVE fsalt
+ -end
+
+frdx
+ -start
+ 10 do = tot('Ozero')
+ 20 frdx = do/(do+0.00002)
+ 40 SAVE frdx
+ -end
+
+SOLUTION 1
+  units       mmol/kgw
+  temperature 	 25
+  pH 	  6.2
+  Acetate 	       4.38
+  Glucose 	       0.54
+  Ferrous 	       4.00
+
+  C(4)        1.0 redoxCO2(g) -3.4  # in equilibrium with CO2 in atmosphere, 400 pm
+  Ca          1.0
+  Na          1.0   
+  Cl          3.0  charge
+  Ozero       0.25 redoxO2(g) 0.0   #mmol/L atm level
+  Ferric      1e-20 redoxFe(OH)3(a) 0.0
+  Methane     1.0e-10
+  Amm         1.0e-3
+  SAVE SOLUTION 1
+END
+
+
+GAS_PHASE 1 fixed volume gas phase
+  -fixed_volume
+  -volume 	   0.5
+  temperature 	 8.0
+
+  redoxCH4(g) 0.0
+  redoxCO2(g) 0.0
+  redoxH2(g)  0.0
+  redoxO2(g)  1.0
+  redoxNH3(g) 0.0
+  SAVE GAS_PHASE 1
+END
+ 
+USE SOLUTION 1
+USE GAS_PHASE 1
+ 
+EQUILIBRIUM_PHASES 1
+  redoxFe(OH)3(a) 0.0 5.67059990E-03
+SURFACE 1
+Hfo_w redoxFe(OH)3(a) 0.2 1.068E4
+Hfo_s redoxFe(OH)3(a) 0.005 1.068E4
+  H_a   1.774E-03  3.417E+04      2.498
+  H_b   1.774E-03; H_c   1.774E-03; H_d  1.774E-03
+  H_e   8.869E-04; H_f   8.869E-04; H_g  8.869E-04; H_h  8.869E-04
+  H_ab  2.948E-04; H_ad  2.948E-04; H_af  2.948E-04; H_ah  2.948E-04
+  H_bc  2.948E-04; H_be  2.948E-04; H_bg  2.948E-04; H_cd  2.948E-04
+  H_cf  2.948E-04; H_ch  2.948E-04; H_de  2.948E-04; H_dg  2.948E-04
+  -equil 1
+
+
+
+KINETICS  Decomposition
+-cvode
+
+BA
+   -m0   0.5
+   -formula CH2O 0.0   
+   -parms 5e-4  0.26  3e-4 2.6  0.75  0.01  0.25   #Vd1, kD1, Vd2, kD2, Ec1, pEP, Ec2
+
+POM1
+   -m0   4
+   -formula CH2O 0.0    
+   -parms 1.5  50  2e-5  0.5  #vp1, kp1, Ip1, gD-fraction of dead BA to D   KmO2
+POM2
+   -m0   2
+   -formula CH2O 0.0
+   -parms  1.5   5  2e-5   #vp2, kp2, Ip2,  KmO2
+MOM
+   -m0   10
+   -formula CH2O 0.0
+   -parms 0.1  250  0.5   #vm, km, fD- fraction of decomposed p1/p2 to D
+
+DOM1
+   -m0   0.1
+   -formula CH2O 0.0  
+   -parms  2e-5  0.5  0.5  #Input, gD  fD
+DOM2
+   -m0   0.4
+   -formula CH2O 0.0  
+   -parms  2e-5  0.5  #Input, fD
+
+QOM1
+   -m0   0.1
+   -formula CH2O 0.0   
+   -parms 0.006 0.1  0.001   #adsorption constant, Qmax, desorption constant
+
+QOM2
+   -m0   0.9
+   -formula CH2O 0.0  
+   -parms 0.006  1.7 0.001   #adsorption constant, Qmax, desorption constant
+
+EP1
+   -m0   0.00001
+   -formula CH2O 0.0
+   -parms  0.01 5e-4 0.75 1e-3  #pEP, Vd1, Ec1, rEP
+
+EP2
+   -m0   0.00001
+   -formula CH2O 0.0
+   -parms  0.01 5e-4 0.75 1e-3  #pEP, Vd1, Ec1, rEP
+
+EM
+   -m0   0.00001
+   -formula CH2O 0.0
+   -parms  0.005 5e-4 0.75 1e-3  #pEP, Vd1, Ec1, rEP
+
+respiration
+   -m0   0
+   -formula CH2O 0.0    HCO3 -0.001  Ozero2  1.5  Cl-  -50   Na+  -50
+   -parms  0.75  0.25  #Ec1, Ec2
+
+Tot
+   -m0   18.00003
+   -formula CH2O 0.0
+   -parms  0.75  0.25 2e-5  2e-5  2e-5  2e-5   #Ip1, Ip2, Id1, Id2, Ec1, Ec2
+
+   -steps 720 in 30 steps #hour
+  INCREMENTAL_REACTIONS true
+
+
+RATES
+
+BA
+   -start
+     2 f1 = CALC_VALUE("fpH")
+     5 f2 = CALC_VALUE("fsalt")
+     8 f3 = CALC_VALUE("frdx")*1.007
+    10 mDOM1= kin("DOM1")
+    20 mDOM2= kin("DOM2")
+    30 bio = kin("BA")
+    40 flux1=f1*f2*f3*parm(1)*bio*mDOM1/(parm(2)+mDOM1)   #Vd1, kD1
+    50 put(flux1, 1)                                       
+    60 flux2=f1*f2*f3*parm(3)*bio*mDOM2/(parm(4)+mDOM2)   #Vd2, kD2
+    70 put(flux2, 2)                                           
+    80 flux3 = (1-parm(6)*3)*parm(1)*parm(5)*bio*0.2   ##mortality
+    90 put(flux3, 3)                              #biomass decay              
+    100 rate = parm(5)* get(1)+ parm(7)*get(2)-get(3)-(get(11)+get(13)+get(15))
+    110 save -rate * time 
+   -end
+
+POM1
+   -start
+     2 f1 = CALC_VALUE("fpH")
+     5 f2 = CALC_VALUE("fsalt")
+     8 f3 = CALC_VALUE("frdx")*1.007
+    10 mPOM1 = kin("POM1")
+    20 ep1 = kin("EP1")
+    30 flux = f1*f2*f3*parm(1) * ep1 * mPOM1 /(parm(2)+ mPOM1) # Vp1, kP1
+    40 put(flux, 4)  #flux FP1
+    50 rate = parm(3)+ (1-parm(4))*get(3)-get(4)     #input, gD
+    100 save -rate * time
+   -end
+
+POM2
+   -start
+     2 f1 = CALC_VALUE("fpH")
+     5 f2 = CALC_VALUE("fsalt")
+    10 mPOM2= kin("POM2")
+    20 ep2 = kin("EP2")
+    30 flux = f1*f2*parm(1) * ep2 * mPOM2 /(parm(2)+ mPOM2) # parm(1)=Vp2, parm(2)=Kp2
+    40 put(flux, 5)  #flux FP2
+    50 rate = parm(3)-get(5)   #parm(3)=POM2 input
+    100 save -rate * time
+   -end
+
+
+MOM
+   -start
+     2 f1 = CALC_VALUE("fpH")
+     5 f2 = CALC_VALUE("fsalt")
+     8 f3 = CALC_VALUE("frdx")*1.007
+    10 mMOM = kin("MOM")
+    20 em = kin("EM")
+    30 flux = f1*f2*f3*parm(1) * em * mMOM /(parm(2)+ mMOM) # parm(1)=VM, parm(2)=KM
+    40 put(flux,6)  #flux FM
+    50 rate = (1-parm(3))*(get(4)+get(5))-get(6)   #parm(3)=fD_fraction of decomposed P1/P2 to D
+    100 save -rate*time
+   -end
+
+DOM1
+   -start
+    10 rate = parm(1)+parm(2)* get(3)+get(6)+0.5*parm(3)*(get(4)+get(5))-get(1)-(get(7)-get(8))+get(12)+get(14)+get(16)
+    100 save -rate* time
+   -end
+DOM2
+   -start
+    50 rate = parm(1)+0.5*parm(2)*(get(4)+get(5))-get(2)-(get(9)-get(10)) 
+    100 save -rate* time
+   -end
+
+QOM1
+   -start
+    10 mQOM = kin("QOM1")
+    20 D = kin("DOM1")
+    30 flux1 = parm(1) * (1-mQOM/parm(2))* D #parm(1)=adsorption constant, parm(2)=Qmax
+    40 put(flux1,7)  #flux F4
+    50 flux2 = parm(3) * (mQOM/parm(2)) #parm(3)=desorption constant, parm(2)=Qmax
+    60 put(flux2,8)  #flux F5
+    70 rate = get(7)-get(8)
+    100 save -rate * time
+   -end
+
+QOM2
+   -start
+    10 mQOM = kin("QOM2")
+    20 D = kin("DOM2")
+    30 flux1 = parm(1) * (1-mQOM/parm(2))* D #parm(1)=adsorption constant, parm(2)=Qmax
+    40 put(flux1,9)  #flux F4
+    50 flux2 = parm(3) * (mQOM/parm(2)) #parm(3)=desorption constant, parm(2)=Qmax
+    60 put(flux2,10)  #flux F5
+    70 rate = get(9)-get(10)
+    100 save -rate * time
+   -end
+
+
+EP1
+   -start
+    10 p1 = kin("POM1")
+    20 p2 = kin ("POM2")
+    30 bio = kin("BA")
+    40 ep1 = kin("EP1")
+    50 flux1 = p1/(p1+p2)*parm(1)*parm(2)*parm(3)*bio *0.2
+    60 put (flux1,11)
+    70 flux2 = parm(4) *ep1
+    80 put (flux2,12)
+    90 rate = get(11)-get(12)
+    100 save -rate * time
+   -end
+
+EP2
+   -start
+    10 p1 = kin("POM1")
+    20 p2 = kin ("POM2")
+    30 bio = kin("BA")
+    40 ep2 = kin("EP2")
+    50 flux1 = p2/(p1+p2)*parm(1)*parm(2)*parm(3)*bio*0.2
+    60 put (flux1,13)
+    70 flux2 = parm(4) *ep2
+    80 put (flux2,14)
+    90 rate = get(13)-get(14)
+    100  save -rate * time
+   -end
+
+EM
+   -start
+    10 em = kin("EM")
+    20 bio = kin("BA")
+    30 flux1 = parm(1)*parm(2)*parm(3)*bio*0.2
+    40 put (flux1, 15)
+    50 flux2= parm(4)* em
+    60 put (flux2,16)
+    70 rate = get(15)-get(16)
+    100  save -rate * time
+   -end
+
+respiration
+   -start
+    10 rate = (1-parm(1))* get(1)+ (1-parm(2))*get(2)
+    20 save -rate * time
+   -end
+Tot
+   -start
+    10 rate = parm(3)+parm(4)+parm(5)+parm(6)- (1-parm(1))* get(1)- (1-parm(2))*get(2)
+    20 save -rate * time
+   -end
+
+
+SELECTED_OUTPUT
+  -RESET false
+  -FILE MENDp_30.txt
+
+USER_PUNCH
+  -start
+  -heading Time P1 P2 M Q1 Q2 D1 D2 B EP1 EP2 EM  IC Tot pH  fpH CO2aq  O2 fsalt frdx 
+  10 PUNCH SIM_TIME
+  20 PUNCH kin('POM1') kin('POM2') kin('MOM') kin('QOM1') kin('QOM2') kin('DOM1') kin('DOM2') kin('BA') kin('EP1') kin('EP2') kin('EM') 
+  30 PUNCH kin('respiration') kin("Tot")
+  40 PUNCH -la("H+")
+  50 PUNCH CALC_VALUE("fpH")
+  60 PUNCH tot('C(4)')
+  70 PUNCH tot('Ozero')
+  80 PUNCH CALC_VALUE("fsalt")  CALC_VALUE("frdx")*1.007
+
+  -end
+END
+  
