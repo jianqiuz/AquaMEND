@@ -12,7 +12,7 @@ Follow the following steps to install PHREEQC
 * Step 2: Copy and paste the database file (redox.dat) under the database directory
 
 
-**Schematic diagram of aqueous-explicit model framework **
+**Schematic diagram of aqueous-explicit model framework**
 ![AquaMEND](https://user-images.githubusercontent.com/16612176/98896388-ae507900-245d-11eb-9cc5-151464f2354f.png)
 
 
