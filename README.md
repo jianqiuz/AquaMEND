@@ -17,6 +17,6 @@ Follow the following steps to install PHREEQC
 
 
 **File information**
-1. MENDplus.R
-1. redox.dat
-1. MENDp.phrq
+1. **MENDplus.R** This is the standalone MENDplus model build in R. In this plus version, we have two DOM pools with different levels of thermodynamic favorability
+1. **redox.dat** This is the new PHREEQC database we created 
+1. **MENDp.phrq**
