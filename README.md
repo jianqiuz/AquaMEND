@@ -16,7 +16,10 @@ Follow the following steps to install PHREEQC
 ![AquaMEND](https://user-images.githubusercontent.com/16612176/98896388-ae507900-245d-11eb-9cc5-151464f2354f.png)
 
 
-**File information**
+**Summary of files**
 1. **MENDplus.R** This is the standalone MENDplus model build in R. In this plus version, we have two DOM pools with different levels of thermodynamic favorability
 1. **redox.dat** This is the new PHREEQC database we created 
+1. **MENDp.phrq**
+1. **MENDp.phrq**
+1. **MENDp.phrq**
 1. **MENDp.phrq**
